@@ -25,10 +25,31 @@ javascript: (function () {
       flex-direction: column;
       z-index: 9998;
       transform: translateX(0);
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, width 0.1s ease;
     }
     #toc-panel.collapsed {
-      transform: translateX(280px);
+      transform: translateX(100%);
+    }
+    
+    /* Resize handle */
+    #toc-resize-handle {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 5px;
+      height: 100%;
+      cursor: ew-resize;
+      background: transparent;
+      z-index: 9999;
+    }
+    #toc-resize-handle:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    .resize-active {
+      pointer-events: none;
+    }
+    .resize-active #toc-resize-handle {
+      background: rgba(0, 0, 0, 0.2);
     }
 
     /* Panel Header */
@@ -129,6 +150,13 @@ javascript: (function () {
       flex-direction: row;
       align-items: flex-start;
     }
+
+    .toc-collapsed-trigger-content {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     
     .toc-collapsed > ul {
       display: none;
@@ -203,6 +231,12 @@ javascript: (function () {
       #toc-handle:hover {
         background: #666;
       }
+      #toc-resize-handle:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .resize-active #toc-resize-handle {
+        background: rgba(255, 255, 255, 0.2);
+      }
     }
   `;
   document.head.appendChild(css);
@@ -213,10 +247,14 @@ javascript: (function () {
   const minusSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" class="toc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
 
+  // Default panel width
+  const DEFAULT_PANEL_WIDTH = 280;
+
   // --- Create panel & handle ---
   const panel = document.createElement("div");
   panel.id = "toc-panel";
   panel.innerHTML = `
+    <div id="toc-resize-handle" title="Drag to resize"></div>
     <div id="toc-header">
       <span id="toc-header-text">Conversation TOC</span>
       <span id="toc-expand-all" title="Expand All">${plusSvg}</span>
@@ -231,6 +269,9 @@ javascript: (function () {
   handle.textContent = "TOC";
   document.body.appendChild(handle);
 
+  // Set initial handle position to match panel width
+  handle.style.right = DEFAULT_PANEL_WIDTH + "px";
+
   // Observed container, observer, etc.
   let chatContainer = null;
   let observer = null;
@@ -244,7 +285,7 @@ javascript: (function () {
 
     if (canHaveChildren) {
       li.classList.add("toc-collapse-trigger");
-      li.innerHTML = `<div style="width: 100%;">
+      li.innerHTML = `<div class="toc-collapsed-trigger-content 11">
                    <span class="toc-toggle" role="button" aria-label="Toggle section">${minusSvg}</span>
                    <span class="toc-clickable-content" title="${txt}">${txt}</span>
                  </div>`;
@@ -363,7 +404,7 @@ javascript: (function () {
         }
 
         li.innerHTML = `
-                    <div style="width: 100%;">
+                    <div class="toc-collapsed-trigger-content"">
                         <span class="toc-toggle" role="button" aria-label="Toggle turn">${minusSvg}</span>
                         <span class="toc-clickable-content" title="${label}">${label}</span>
                     </div>
@@ -503,7 +544,7 @@ javascript: (function () {
         }
 
         li.innerHTML = `
-                    <div style="width: 100%;">
+                    <div class="toc-collapsed-trigger-content">
                         <span class="toc-toggle" role="button" aria-label="Toggle turn">${minusSvg}</span>
                         <span class="toc-clickable-content" title="${label}">${label}</span>
                     </div>
@@ -608,8 +649,71 @@ javascript: (function () {
   // Re-check every 2s in case container changes
   const reAttachInterval = setInterval(attachObserver, 2000);
 
-  // Panel toggle
+  // Panel resize functionality
+  const resizeHandle = document.getElementById("toc-resize-handle");
+  let startX, startWidth;
+
+  function startResize(e) {
+    // Don't start resize if panel is collapsed
+    if (panel.classList.contains("collapsed")) return;
+
+    startX = e.clientX;
+    startWidth = parseInt(window.getComputedStyle(panel).width, 10);
+    document.documentElement.classList.add("resize-active");
+    document.addEventListener("mousemove", resize);
+    document.addEventListener("mouseup", stopResize);
+    e.preventDefault();
+  }
+
+  function resize(e) {
+    // Extra check to ensure we don't resize a collapsed panel
+    if (panel.classList.contains("collapsed")) {
+      stopResize();
+      return;
+    }
+
+    // Calculate new width (moving right to left)
+    const newWidth = startWidth + (startX - e.clientX);
+
+    // Enforce minimum width
+    if (newWidth >= DEFAULT_PANEL_WIDTH) {
+      panel.style.width = newWidth + "px";
+
+      // Update handle position when panel is expanded
+      if (!panel.classList.contains("collapsed")) {
+        handle.style.right = newWidth + "px";
+      }
+    } else {
+      panel.style.width = DEFAULT_PANEL_WIDTH + "px";
+
+      // Update handle position for minimum width
+      if (!panel.classList.contains("collapsed")) {
+        handle.style.right = DEFAULT_PANEL_WIDTH + "px";
+      }
+    }
+  }
+
+  function stopResize() {
+    document.documentElement.classList.remove("resize-active");
+    document.removeEventListener("mousemove", resize);
+    document.removeEventListener("mouseup", stopResize);
+  }
+
+  resizeHandle.addEventListener("mousedown", startResize);
+
+  // Panel toggle with handle position adjustment
   handle.addEventListener("click", function () {
+    const isCollapsed = panel.classList.contains("collapsed");
     panel.classList.toggle("collapsed");
+
+    // Reset handle position based on panel state
+    if (isCollapsed) {
+      // Panel is being expanded, move handle to panel width
+      const panelWidth = parseInt(panel.style.width || DEFAULT_PANEL_WIDTH, 10);
+      handle.style.right = panelWidth + "px";
+    } else {
+      // Panel is being collapsed, reset handle to edge
+      handle.style.right = "0";
+    }
   });
 })();
