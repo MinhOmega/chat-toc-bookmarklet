@@ -1,0 +1,40 @@
+{
+  "name": "chat-toc-bookmarklet",
+  "version": "1.0.0",
+  "description": "A JavaScript bookmarklet that adds a Table of Contents panel to AI chat interfaces like ChatGPT and Grok",
+  "scripts": {
+    "minify": "node minify-toc.js"
+  },
+  "keywords": [
+    "bookmarklet",
+    "chatgpt",
+    "grok",
+    "toc",
+    "navigation",
+    "table of contents",
+    "javascript",
+    "chatgpt bookmarklet",
+    "grok bookmarklet",
+    "chatgpt toc",
+    "grok toc",
+    "chatgpt table of contents",
+    "grok table of contents",
+    "chatgpt table of contents bookmarklet",
+    "grok table of contents bookmarklet",
+    "chatgpt toc bookmarklet",
+    "grok toc bookmarklet",
+    "chatgpt table of contents panel",
+    "grok table of contents panel",
+    "chatgpt table of contents panel bookmarklet",
+    "grok table of contents panel bookmarklet",
+    "chatgpt toc panel",
+    "grok toc panel",
+    "chatgpt table of contents panel",
+    "grok table of contents panel"
+  ],
+  "author": "https://github.com/MinhOmega",
+  "license": "MIT",
+  "dependencies": {
+    "terser": "^5.39.0"
+  }
+}
